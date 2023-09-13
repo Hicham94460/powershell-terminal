@@ -296,56 +296,69 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         if (_showMarksInScrollbar)
         {
-            // Update scrollbar marks
-            ScrollBarCanvas().Children().Clear();
-            const auto marks{ _core.ScrollMarks() };
-            const auto fullHeight{ ScrollBarCanvas().ActualHeight() };
-            const auto totalBufferRows{ update.newMaximum + update.newViewportSize };
+            const auto totalBufferRows = gsl::narrow_cast<float>(update.newMaximum + update.newViewportSize);
+            const auto scaleFactor = DisplayInformation::GetForCurrentView().RawPixelsPerViewPixel();
+            const auto scrollBarActualWidth = scrollBar.ActualWidth();
+            const auto scrollBarActualHeight = scrollBar.ActualHeight();
+            const auto scrollBarWidth = gsl::narrow_cast<int32_t>(lrint(scrollBarActualWidth * scaleFactor));
+            const auto scrollBarHeight = gsl::narrow_cast<int32_t>(lrint(scrollBarActualHeight * scaleFactor));
 
-            auto drawPip = [&](const auto row, const auto rightAlign, const auto& brush) {
-                Windows::UI::Xaml::Shapes::Rectangle r;
-                r.Fill(brush);
-                r.Width(16.0f / 3.0f); // pip width - 1/3rd of the scrollbar width.
-                r.Height(2);
-                const auto fractionalHeight = row / totalBufferRows;
-                const auto relativePos = fractionalHeight * fullHeight;
-                ScrollBarCanvas().Children().Append(r);
-                Windows::UI::Xaml::Controls::Canvas::SetTop(r, relativePos);
-                if (rightAlign)
-                {
-                    Windows::UI::Xaml::Controls::Canvas::SetLeft(r, 16.0f * .66f);
-                }
-            };
+            const auto canvas = FindName(L"ScrollBarCanvas").as<Controls::Image>();
+            const auto canvasWidth = gsl::narrow_cast<int32_t>(lrint(canvas.ActualWidth() * scaleFactor));
+            const auto canvasHeight = gsl::narrow_cast<int32_t>(lrint(canvas.ActualHeight() * scaleFactor));
+            auto source = canvas.Source().try_as<Media::Imaging::WriteableBitmap>();
 
-            for (const auto m : marks)
+            if (!source || scrollBarWidth != canvasWidth || scrollBarHeight != canvasHeight)
             {
-                Windows::UI::Xaml::Shapes::Rectangle r;
-                Media::SolidColorBrush brush{};
-                // Sneaky: technically, a mark doesn't need to have a color set,
-                // it might want to just use the color from the palette for that
-                // kind of mark. Fortunately, ControlCore is kind enough to
-                // pre-evaluate that for us, and shove the real value into the
-                // Color member, regardless if the mark has a literal value set.
-                brush.Color(static_cast<til::color>(m.Color.Color));
-                drawPip(m.Start.Y, false, brush);
+                source = Media::Imaging::WriteableBitmap{ scrollBarWidth, scrollBarHeight };
+                canvas.Source(source);
+                canvas.Width(scrollBarActualWidth);
+                canvas.Height(scrollBarActualHeight);
             }
 
-            if (_searchBox)
+            const auto buffer = source.PixelBuffer();
+            const auto data = reinterpret_cast<til::color*>(buffer.data());
+            const auto len = buffer.Length();
+            const auto pipWidth = (scrollBarWidth + 1) / 3;
+            const auto pipHeight = lrint(scaleFactor);
+
+            memset(data, 0, len);
+
+            if (const auto marks = _core.ScrollMarks())
             {
-                const auto searchMatches{ _core.SearchResultRows() };
-                if (searchMatches &&
-                    searchMatches.Size() > 0 &&
-                    _searchBox->Visibility() == Visibility::Visible)
+                for (const auto& m : marks)
                 {
-                    const til::color fgColor{ _core.ForegroundColor() };
-                    Media::SolidColorBrush searchMarkBrush{};
-                    searchMarkBrush.Color(fgColor);
-                    for (const auto m : searchMatches)
+                    const auto row = m.Start.Y;
+                    const til::color color{ m.Color.Color };
+                    auto base = data + scrollBarWidth * std::clamp<long>(lrintf(row / totalBufferRows * scrollBarHeight), 0, scrollBarHeight - pipHeight);
+
+                    for (auto y = 0; y < pipHeight; ++y, base += scrollBarWidth)
                     {
-                        drawPip(m, true, searchMarkBrush);
+                        std::fill_n(base, pipWidth, color);
                     }
                 }
             }
+
+            if (_searchBox && _searchBox->Visibility() == Visibility::Visible)
+            {
+                const til::color fgColor{ _core.ForegroundColor() };
+
+                if (const auto searchMatches = _core.SearchResultRows())
+                {
+                    for (const auto& row : searchMatches)
+                    {
+                        auto base = data + scrollBarWidth * std::clamp<long>(lrintf(row / totalBufferRows * scrollBarHeight), 0, scrollBarHeight - pipHeight);
+
+                        for (auto y = 0; y < pipHeight; ++y, base += scrollBarWidth)
+                        {
+                            std::fill_n(base + scrollBarWidth - pipWidth, pipWidth, fgColor);
+                        }
+                    }
+                }
+            }
+
+            source.Invalidate();
+            canvas.Visibility(Visibility::Visible);
         }
     }
 
@@ -620,14 +633,12 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             // achieve the intended effect.
             ScrollBar().IndicatorMode(Controls::Primitives::ScrollingIndicatorMode::None);
             ScrollBar().Visibility(Visibility::Collapsed);
-            ScrollMarksGrid().Visibility(Visibility::Collapsed);
         }
         else // (default or Visible)
         {
             // Default behavior
             ScrollBar().IndicatorMode(Controls::Primitives::ScrollingIndicatorMode::MouseIndicator);
             ScrollBar().Visibility(Visibility::Visible);
-            ScrollMarksGrid().Visibility(Visibility::Visible);
         }
 
         _interactivity.UpdateSettings();
@@ -640,8 +651,11 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         }
 
         _showMarksInScrollbar = settings.ShowMarks();
-        // Clear out all the current marks
-        ScrollBarCanvas().Children().Clear();
+        // Hide all scrollbar marks since they might be disabled now.
+        if (const auto canvas = ScrollBarCanvas())
+        {
+            canvas.Visibility(Visibility::Collapsed);
+        }
         // When we hot reload the settings, the core will send us a scrollbar
         // update. If we enabled scrollbar marks, then great, when we handle
         // that message, we'll redraw them.
@@ -2022,7 +2036,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     //     However, when it does happen, it doesn't give us any useful
     //     information.
     //   - 2. Then, a SizeChanged. During that SizeChanged, either:
-    //      - the CompositionScale will still be the original DPI. This happens
+    //      - the CompositionScale will still be the original
+    // . This happens
     //        when the control is visible as the DPI changes.
     //      - The CompositionScale will be the new DPI. This happens when the
     //        control wasn't focused as the window's DPI changed, so it only got
