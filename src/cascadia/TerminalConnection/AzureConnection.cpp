@@ -52,7 +52,7 @@ static inline std::wstring _formatResWithColoredUserInputOptions(const std::wstr
 
 static inline std::wstring _formatTenant(int tenantNumber, const Tenant& tenant)
 {
-    return fmt::format(std::wstring_view{ RS_(L"AzureIthTenant") },
+    return fmt::format(RS_fmt(L"AzureIthTenant"),
                        _colorize(USER_INPUT_COLOR, std::to_wstring(tenantNumber)),
                        _colorize(USER_INFO_COLOR, tenant.DisplayName.value_or(std::wstring{ RS_(L"AzureUnknownTenantName") })),
                        tenant.DefaultDomain.value_or(tenant.ID)); // use the domain name if possible, ID if not.

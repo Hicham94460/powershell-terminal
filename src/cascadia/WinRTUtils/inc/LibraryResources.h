@@ -61,6 +61,7 @@ namespace Microsoft::Console::Utils
 
 // For things that need UTF-8 strings
 #define RS_A(x) (winrt::to_string(RS_(x)))
+#define RS_fmt(x) fmt::runtime(std::wstring_view{ RS_(x) })
 
 // Array-to-pointer decay might technically be avoidable, but this is elegant and clean.
 #define UTILS_DEFINE_LIBRARY_RESOURCE_SCOPE(x) \

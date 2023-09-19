@@ -302,7 +302,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             totalString = fmt::format(L"{}", totalMatches);
         }
 
-        return winrt::hstring{ fmt::format(RS_(L"TermControl_NumResults").c_str(), currentString, totalString) };
+        return winrt::hstring{ fmt::format(RS_fmt(L"TermControl_NumResults"), currentString, totalString) };
     }
 
     // Method Description:

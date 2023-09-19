@@ -963,7 +963,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         {
             // Then warn the user that we picked something because we couldn't find their font.
             // Format message with user's choice of font and the font that was chosen instead.
-            const winrt::hstring message{ fmt::format(std::wstring_view{ RS_(L"NoticeFontNotFound") },
+            const winrt::hstring message{ fmt::format(RS_fmt(L"NoticeFontNotFound"),
                                                       _desiredFont.GetFaceName(),
                                                       _actualFont.GetFaceName()) };
             auto noticeArgs = winrt::make<NoticeEventArgs>(NoticeLevel::Warning, message);

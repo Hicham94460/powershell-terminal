@@ -507,12 +507,12 @@ void SettingsLoader::_rethrowSerializationExceptionWithLocationInfo(const JsonUt
     const auto [line, column] = _lineAndColumnFromPosition(settingsString, static_cast<size_t>(e.jsonValue.getOffsetStart()));
 
     fmt::memory_buffer msg;
-    fmt::format_to(msg, "* Line {}, Column {}", line, column);
+    fmt::format_to(std::back_inserter(msg), "* Line {}, Column {}", line, column);
     if (e.key)
     {
-        fmt::format_to(msg, " ({})", *e.key);
+        fmt::format_to(std::back_inserter(msg), " ({})", *e.key);
     }
-    fmt::format_to(msg, "\n  Have: {}\n  Expected: {}\0", jsonValueAsString, e.expectedType);
+    fmt::format_to(std::back_inserter(msg), "\n  Have: {}\n  Expected: {}\0", jsonValueAsString, e.expectedType);
 
     throw SettingsTypedDeserializationException{ msg.data() };
 }

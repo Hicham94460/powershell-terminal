@@ -2069,7 +2069,7 @@ namespace winrt::TerminalApp::implementation
                         {
                             autoPeer.RaiseNotificationEvent(Automation::Peers::AutomationNotificationKind::ActionCompleted,
                                                             Automation::Peers::AutomationNotificationProcessing::ImportantMostRecent,
-                                                            fmt::format(std::wstring_view{ RS_(L"TerminalPage_PaneMovedAnnouncement_ExistingWindow") }, tabTitle, windowId),
+                                                            fmt::format(RS_fmt(L"TerminalPage_PaneMovedAnnouncement_ExistingWindow"), tabTitle, windowId),
                                                             L"TerminalPageMovePaneToExistingWindow" /* unique name for this notification category */);
                         }
                     }
@@ -2104,7 +2104,7 @@ namespace winrt::TerminalApp::implementation
                 const auto tabTitle = targetTab->Title();
                 autoPeer.RaiseNotificationEvent(Automation::Peers::AutomationNotificationKind::ActionCompleted,
                                                 Automation::Peers::AutomationNotificationProcessing::ImportantMostRecent,
-                                                fmt::format(std::wstring_view{ RS_(L"TerminalPage_PaneMovedAnnouncement_ExistingTab") }, tabTitle),
+                                                fmt::format(RS_fmt(L"TerminalPage_PaneMovedAnnouncement_ExistingTab"), tabTitle),
                                                 L"TerminalPageMovePaneToExistingTab" /* unique name for this notification category */);
             }
         }
@@ -2204,14 +2204,14 @@ namespace winrt::TerminalApp::implementation
                     {
                         autoPeer.RaiseNotificationEvent(Automation::Peers::AutomationNotificationKind::ActionCompleted,
                                                         Automation::Peers::AutomationNotificationProcessing::ImportantMostRecent,
-                                                        fmt::format(std::wstring_view{ RS_(L"TerminalPage_TabMovedAnnouncement_NewWindow") }, tabTitle),
+                                                        fmt::format(RS_fmt(L"TerminalPage_TabMovedAnnouncement_NewWindow"), tabTitle),
                                                         L"TerminalPageMoveTabToNewWindow" /* unique name for this notification category */);
                     }
                     else
                     {
                         autoPeer.RaiseNotificationEvent(Automation::Peers::AutomationNotificationKind::ActionCompleted,
                                                         Automation::Peers::AutomationNotificationProcessing::ImportantMostRecent,
-                                                        fmt::format(std::wstring_view{ RS_(L"TerminalPage_TabMovedAnnouncement_Default") }, tabTitle, windowId),
+                                                        fmt::format(RS_fmt(L"TerminalPage_TabMovedAnnouncement_Default"), tabTitle, windowId),
                                                         L"TerminalPageMoveTabToExistingWindow" /* unique name for this notification category */);
                     }
                 }
